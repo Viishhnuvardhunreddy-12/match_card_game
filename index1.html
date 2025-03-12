@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Quest</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .game-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .stat {
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        #board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            position: relative;
+            height: 150px;
+            border-radius: 5px;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            cursor: pointer;
+        }
+        
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .card.matched {
+            transform: rotateY(180deg);
+            opacity: 0.7;
+        }
+        
+        .card.hint {
+            box-shadow: 0 0 15px 5px #ffcc00;
+        }
+        
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 5px;
+        }
+        
+        .card-front {
+            background-color: white;
+            transform: rotateY(180deg);
+            font-size: 2.5em;
+        }
+        
+        .card-back {
+            background-color: #3498db;
+            background-image: linear-gradient(45deg, #3498db, #2980b9);
+        }
+        
+        .story-container {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .progress-container {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        #levelProgress {
+            height: 100%;
+            background-color: #2ecc71;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        
+        .abilities-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .ability-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .ability-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .ability-btn:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .world-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            #board {
+                grid-template-columns: repeat(4, 1fr) !important;
+            }
+            
+            .card {
+                height: 100px !important;
+                width: 70px !important;
+            }
+            
+            .card-front {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>Memory Quest</h1>
+            <div class="stats">
+                <div class="stat">
+                    <div>World: <span id="world">1</span></div>
+                </div>
+                <div class="stat">
+                    <div>Level: <span id="level">1</span></div>
+                </div>
+                <div class="stat">
+                    <div>Score: <span id="score">0</span></div>
+                </div>
+                <div class="stat">
+                    <div>Coins: <span id="coins">0</span></div>
+                </div>
+                <div class="stat">
+                    <div>Moves: <span id="moves">0</span></div>
+                </div>
+                <div class="stat" id="timerDisplay">
+                    <div>Time: <span id="timer">2:00</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="level-controls">
+            <select id="levelSelector"></select>
+            <button id="restartBtn" class="btn">Restart Level</button>
+            <button id="shopBtn" class="btn">Shop</button>
+        </div>
+        
+        <div id="board">
+            <!-- Cards will be created here -->
+        </div>
+        
+        <div id="abilities-container" class="abilities-container">
+            <button id="hintAbility" class="ability-btn" disabled>Hint (10 coins)</button>
+            <button id="peekAbility" class="ability-btn" disabled>Peek (15 coins)</button>
+            <button id="timeAbility" class="ability-btn" disabled>+30s Time (20 coins)</button>
+            <button id="shuffleAbility" class="ability-btn" disabled>Shuffle (25 coins)</button>
+        </div>
+        
+        <div class="progress-container">
+            <div id="levelProgress" style="width: 0%"></div>
+        </div>
+        
+        <div class="story-container">
+            <h3>Level Story</h3>
+            <p id="storyContent">You enter the mystical forest, where ancient trees whisper secrets. Your memory quest begins here, seeking knowledge hidden among the foliage.</p>
+        </div>
+    </div>
+    
+    <!-- Victory Modal -->
+    <div id="victoryModal" class="modal">
+        <div class="modal-content">
+            <h2>Level Complete!</h2>
+            <p>Your score: <span id="finalScore">0</span></p>
+            <p>Coins earned: <span id="levelCoins">0</span></p>
+            <button id="nextLevelBtn" class="btn">Next Level</button>
+        </div>
+    </div>
+    
+    <!-- World Complete Modal -->
+    <div id="worldCompleteModal" class="modal">
+        <div class="modal-content">
+            <h2>World Complete!</h2>
+            <p>You've completed the <span id="completedWorld">Forest</span> world!</p>
+            <p>Bonus coins: <span id="worldBonus">0</span></p>
+            <p id="worldUnlock">You've unlocked the Ocean world!</p>
+            <button id="nextWorldBtn" class="btn">Next World</button>
+        </div>
+    </div>
+    
+    <!-- Level Up Modal -->
+    <div id="levelUpModal" class="modal">
+        <div class="modal-content">
+            <h2>Level Up!</h2>
+            <p>You've reached level <span id="newLevel">2</span>!</p>
+            <p>Coins earned: <span id="earnedCoins">0</span></p>
+            <p id="unlockedItem"></p>
+            <button id="continueBtn" class="btn">Continue</button>
+        </div>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>Time's Up!</h2>
+            <p>Your final score: <span id="gameOverScore">0</span></p>
+            <button id="gameOverRestartBtn" class="btn">Try Again</button>
+        </div>
+    </div>
+    
+    <!-- Shop Modal -->
+    <div id="shopModal" class="modal">
+        <div class="modal-content">
+            <h2>Shop</h2>
+            <p>Your coins: <span id="shopCoins">0</span></p>
+            <div class="shop-items">
+                <div class="shop-item">
+                    <h3>Extra Time</h3>
+                    <p>Add 60 seconds to your time limit for timed levels.</p>
+                    <button id="buy-extraTime" class="btn" onclick="buyItem('extraTime')">Buy (20 coins)</button>
+                </div>
+                <div class="shop-item">
+                    <h3>Match Bonus</h3>
+                    <p>Earn double points for your next 5 matches.</p>
+                    <button id="buy-matchBonus" class="btn" onclick="buyItem('matchBonus')">Buy (30 coins)</button>
+                </div>
+                <div class="shop-item">
+                    <h3>XP Boost</h3>
+                    <p>Get a 50% XP boost for the current level.</p>
+                    <button id="buy-xpBoost" class="btn" onclick="buyItem('xpBoost')">Buy (40 coins)</button>
+                </div>
+            </div>
+            <button id="closeShopBtn" class="btn">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Game state initialization
+        const gameState = {
+            world: 1,
+            level: 1,
+            score: 0,
+            coins: 50, // Start with some coins
+            moves: 0,
+            firstCard: null,
+            secondCard: null,
+            locked: false,
+            cardsInPlay: 0,
+            cardsPaired: 0,
+            timeRemaining: 0,
+            timer: null,
+            currentXP: 0,
+            xpToNextLevel: 100,
+            maxLevelUnlocked: 1,
+            abilities: {
+                hint: {
+                    unlocked: false,
+                    cost: 10
+                },
+                peek: {
+                    unlocked: false,
+                    cost: 15
+                },
+                time: {
+                    unlocked: false,
+                    cost: 20
+                },
+                shuffle: {
+                    unlocked: false,
+                    cost: 25
+                }
+            }
+        };
+        
+        // Game worlds
+        const gameWorlds = [
+            { name: "Forest", color: "#2ecc71" },
+            { name: "Ocean", color: "#3498db" },
+            { name: "Desert", color: "#f39c12" },
+            { name: "Mountain", color: "#95a5a6" },
+            { name: "Crystal Cave", color: "#9b59b6" },
+            { name: "Volcanic", color: "#e74c3c" }
+        ];
+        
+        // Shop items
+        const shopItems = {
+            extraTime: {
+                cost: 20,
+                effect: function() {
+                    gameState.timeRemaining += 60;
+                    updateTimerDisplay();
+                }
+            },
+            matchBonus: {
+                cost: 30,
+                effect: function() {
+                    gameState.matchBonus = 5;
+                    alert("Match bonus activated for your next 5 matches!");
+                }
+            },
+            xpBoost: {
+                cost: 40,
+                effect: function() {
+                    gameState.xpBoost = true;
+                    alert("XP boost activated for this level!");
+                }
+            }
+        };
+        
+        // Symbol sets for each world/level
+        const symbolSets = [
+            // World 1: Forest
+            [
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇'],  // Level 1
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂'],  // Level 2
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺'],  // Level 3
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱'],  // Level 4
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢'],  // Level 5
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢', '🐦', '🦅'],  // Level 6
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢', '🐦', '🦅', '🌰', '🌺'],  // Level 7
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢', '🐦', '🦅', '🌰', '🌺', '🦋', '🐜'],  // Level 8
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢', '🐦', '🦅', '🌰', '🌺', '🦋', '🐜', '🐌', '🐛'],  // Level 9
+                ['🌳', '🌲', '🍄', '🦊', '🦌', '🐿️', '🦉', '🐇', '🍁', '🍂', '🦡', '🐺', '🌿', '🌱', '🌼', '🦢', '🐦', '🦅', '🌰', '🌺', '🦋', '🐜', '🐌', '🐛', '🦔', '🦝']   // Level 10
+            ],
+            // World 2: Ocean
+            [
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊'],  // Level 1
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞'],  // Level 2
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️'],  // Level 3
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️'],  // Level 4
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢'],  // Level 5
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢', '🦈', '🦭'],  // Level 6
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢', '🦈', '🦭', '🧊', '🌡️'],  // Level 7
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢', '🦈', '🦭', '🧊', '🌡️', '🌪️', '🌫️'],  // Level 8
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢', '🦈', '🦭', '🧊', '🌡️', '🌪️', '🌫️', '🦪', '🧿'],  // Level 9
+                ['🐟', '🐠', '🦀', '🐙', '🐚', '🐬', '🐳', '🌊', '🦑', '🦞', '🏝️', '🏖️', '🧜‍♀️', '🧜‍♂️', '⚓', '🚢', '🦈', '🦭', '🧊', '🌡️', '🌪️', '🌫️', '🦪', '🧿', '🧽', '👑']   // Level 10
+            ],
+            // World 3: Desert
+            [
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳'],  // Level 1
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎'],  // Level 2
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮'],  // Level 3
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️'],  // Level 4
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓'],  // Level 5
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓', '🎪', '🏯'],  // Level 6
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓', '🎪', '🏯', '💰', '💎'],  // Level 7
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓', '🎪', '🏯', '💰', '💎', '🧠', '👁️'],  // Level 8
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓', '🎪', '🏯', '💰', '💎', '🧠', '👁️', '🗿', '🏔️'],  // Level 9
+                ['🏜️', '🌵', '🦂', '🐪', '🌞', '🔥', '🏺', '⏳', '🐍', '🦎', '🧿', '🔮', '🧞‍♂️', '🧞‍♀️', '🐘', '🦓', '🎪', '🏯', '💰', '💎', '🧠', '👁️', '🗿', '🏔️', '🌑', '☄️']   // Level 10
+            ],
+            // World 4: Mountain
+            [
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂'],  // Level 1
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️'],  // Level 2
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲'],  // Level 3
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️'],  // Level 4
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️'],  // Level 5
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️', '🐺', '🦌'],  // Level 6
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️', '🐺', '🦌', '🧣', '🧤'],  // Level 7
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️', '🐺', '🦌', '🧣', '🧤', '🏕️', '⛺'],  // Level 8
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️', '🐺', '🦌', '🧣', '🧤', '🏕️', '⛺', '🔭', '🧭'],  // Level 9
+                ['🏔️', '⛰️', '🦅', '🐐', '❄️', '☃️', '🧊', '🏂', '🧗‍♀️', '🧗‍♂️', '🌲', '🌲', '☁️', '🌨️', '⛷️', '🏔️', '🐺', '🦌', '🧣', '🧤', '🏕️', '⛺', '🔭', '🧭', '🧿', '🔮']   // Level 10
+            ],
+            // World 5: Crystal Cave
+            [
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍'],  // Level 1
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟'],  // Level 2
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️'],  // Level 3
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️'],  // Level 4
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱'],  // Level 5
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱', '🪬', '🔮'],  // Level 6
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱', '🪬', '🔮', '🔆', '🌑'],  // Level 7
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱', '🪬', '🔮', '🔆', '🌑', '🧩', '🎭'],  // Level 8
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱', '🪬', '🔮', '🔆', '🌑', '🧩', '🎭', '🗝️', '🔒'],  // Level 9
+                ['💎', '🔮', '✨', '👑', '💍', '🧿', '🪞', '🔍', '🪄', '🌟', '🧙‍♂️', '🧙‍♀️', '🧝‍♀️', '🧝‍♂️', '🧠', '🔱', '🪬', '🔮', '🔆', '🌑', '🧩', '🎭', '🗝️', '🔒', '⌛', '🧚‍♀️']   // Level 10
+            ],
+            // World 6: Volcanic
+            [
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒'],  // Level 1
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖'],  // Level 2
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨'],  // Level 3
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡'],  // Level 4
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪'],  // Level 5
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪', '🦕', '🌌'],  // Level 6
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪', '🦕', '🌌', '🧬', '🧫'],  // Level 7
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪', '🦕', '🌌', '🧬', '🧫', '🧮', '📡'],  // Level 8
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪', '🦕', '🌌', '🧬', '🧫', '🧮', '📡', '🚀', '👽'],  // Level 9
+                ['🌋', '🔥', '🧯', '🧨', '🌡️', '♨️', '💥', '🚒', '🏭', '🦖', '☄️', '🪨', '🧲', '⚡', '🌍', '🧪', '🦕', '🌌', '🧬', '🧫', '🧮', '📡', '🚀', '👽', '🛸', '👾']   // Level 10
+            ]
+        ];
+        
+        // Level configuration
+        const levelConfigs = [
+            // World 1 levels
+            [
+                { rows: 4, cols: 4, time: 120, scoreMultiplier: 1, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 150, scoreMultiplier: 1.2, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 180, scoreMultiplier: 1.5, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 210, scoreMultiplier: 1.8, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 240, scoreMultiplier: 2, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 270, scoreMultiplier: 2.2, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 300, scoreMultiplier: 2.5, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 330, scoreMultiplier: 2.8, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 360, scoreMultiplier: 3, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 390, scoreMultiplier: 3.5, cardsToUse: 26 }  // Level 10
+            ],
+            // Similar configurations for worlds 2-6...
+            // World 2 levels
+            [
+                { rows: 4, cols: 4, time: 120, scoreMultiplier: 1.2, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 150, scoreMultiplier: 1.4, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 180, scoreMultiplier: 1.7, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 210, scoreMultiplier: 2, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 240, scoreMultiplier: 2.2, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 270, scoreMultiplier: 2.4, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 300, scoreMultiplier: 2.7, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 330, scoreMultiplier: 3, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 360, scoreMultiplier: 3.2, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 390, scoreMultiplier: 3.7, cardsToUse: 26 }  // Level 10
+            ],
+            // World 3 levels
+            [
+                { rows: 4, cols: 4, time: 110, scoreMultiplier: 1.5, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 140, scoreMultiplier: 1.7, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 170, scoreMultiplier: 2, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 200, scoreMultiplier: 2.3, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 230, scoreMultiplier: 2.5, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 260, scoreMultiplier: 2.7, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 290, scoreMultiplier: 3, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 320, scoreMultiplier: 3.3, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 350, scoreMultiplier: 3.5, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 380, scoreMultiplier: 4, cardsToUse: 26 }  // Level 10
+            ],
+            // World 4 levels
+            [
+                { rows: 4, cols: 4, time: 100, scoreMultiplier: 2, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 130, scoreMultiplier: 2.2, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 160, scoreMultiplier: 2.5, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 190, scoreMultiplier: 2.8, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 220, scoreMultiplier: 3, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 250, scoreMultiplier: 3.2, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 280, scoreMultiplier: 3.5, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 310, scoreMultiplier: 3.8, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 340, scoreMultiplier: 4, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 370, scoreMultiplier: 4.5, cardsToUse: 26 }  // Level 10
+            ],
+            // World 5 levels
+            [
+                { rows: 4, cols: 4, time: 90, scoreMultiplier: 2.5, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 120, scoreMultiplier: 2.7, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 150, scoreMultiplier: 3, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 180, scoreMultiplier: 3.3, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 210, scoreMultiplier: 3.5, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 240, scoreMultiplier: 3.7, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 270, scoreMultiplier: 4, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 300, scoreMultiplier: 4.3, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 330, scoreMultiplier: 4.5, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 360, scoreMultiplier: 5, cardsToUse: 26 }  // Level 10
+            ],
+            // World 6 levels
+            [
+                { rows: 4, cols: 4, time: 80, scoreMultiplier: 3, cardsToUse: 8 },   // Level 1
+                { rows: 4, cols: 5, time: 110, scoreMultiplier: 3.2, cardsToUse: 10 }, // Level 2
+                { rows: 4, cols: 6, time: 140, scoreMultiplier: 3.5, cardsToUse: 12 }, // Level 3
+                { rows: 5, cols: 6, time: 170, scoreMultiplier: 3.8, cardsToUse: 14 }, // Level 4
+                { rows: 5, cols: 6, time: 200, scoreMultiplier: 4, cardsToUse: 16 },   // Level 5
+                { rows: 6, cols: 6, time: 230, scoreMultiplier: 4.2, cardsToUse: 18 }, // Level 6
+                { rows: 6, cols: 7, time: 260, scoreMultiplier: 4.5, cardsToUse: 20 }, // Level 7
+                { rows: 6, cols: 8, time: 290, scoreMultiplier: 4.8, cardsToUse: 22 }, // Level 8
+                { rows: 7, cols: 7, time: 320, scoreMultiplier: 5, cardsToUse: 24 },   // Level 9
+                { rows: 7, cols: 8, time: 350, scoreMultiplier: 5.5, cardsToUse: 26 }  // Level 10
+            ]
+        ];
+        
+        // Level stories for each world
+        const levelStories = [
+            // World 1: Forest
+            [
+                "You enter the mystical forest, where ancient trees whisper secrets. Your memory quest begins here, seeking knowledge hidden among the foliage.",
+                "Deeper into the woods, the canopy thickens. Forest creatures watch from hiding spots as you search for matching patterns in nature.",
+                "You discover a clearing bathed in dappled sunlight. The forest spirit challenges you to remember more complex patterns to proceed further.",
+                "A babbling brook crosses your path. Reflections in the water create a double challenge. Focus is key to matching what you see.",
+                "Mist rises from the forest floor. Through the haze, shapes emerge and fade. Your memory must be sharper than ever to identify pairs.",
+                "At the heart of the forest stands an ancient oak. Its bark shows symbols that shift and change. Match them to learn the forest's history.",
+                "Fireflies illuminate your path now. Their blinking lights form patterns in the twilight. Track their movements to find matches.",
+                "You reach a mushroom circle, said to be a doorway to fairy realms. Match the mystical symbols to prove your worthiness to enter.",
+                "The forest's edge reveals a vast valley beyond. Mountain and forest creatures mingle here. Remember their pairings to chart your course ahead.",
+                "Before leaving the forest realm, the ancient guardian tests you one final time. Match all symbols to receive the blessing of safe passage."
+            ],
+            // World 2: Ocean
+            [
+                "The ocean's edge welcomes you with gentle waves. Sea creatures dart beneath the surface, challenging your memory in this new aquatic realm.",
+                "Wading deeper, colorful coral reefs surround you. The patterns of marine life become more complex as you navigate this underwater maze.",
+                "You discover an underwater cave system. Light filters through cracks, illuminating hidden creatures and treasures waiting to be matched.",
+                "Curious merfolk observe your progress. Their ancient symbols test your growing ability to recognize patterns in the swirling currents.",
+                "A deep sea trench reveals bizarre creatures adapted to darkness. Their bioluminescent patterns create a memory challenge unlike any before.",
+                "You arrive at an ancient shipwreck, now home to countless sea creatures. Pirates' lost treasures and marine life create an intricate matching puzzle.",
+                "Powerful currents sweep you toward a massive underwater city. Atlantean symbols and oceanic life forms combine in new memory patterns.",
+                "The ocean's twilight zone presents creatures rarely seen by human eyes. Your memory skills must adapt to these strange new forms.",
+                "Near thermal vents, primordial life thrives in extreme conditions. These ancient patterns challenge your mastery of oceanic memory.",
+                "At the ocean's deepest point, the sea guardian awaits. Complete this final challenge to earn mastery of the ocean realm."
+            ],
+            // World 3: Desert
+            [
+                "Heat waves distort your vision as you enter the vast desert. Shifting sands reveal and conceal patterns that test your memory under the blazing sun.",
+                "Ancient hieroglyphs decorate weathered stones. These symbols of a forgotten civilization create new matching challenges.",
+                "You discover an oasis where desert creatures gather. Their fleeting appearances between palm fronds require quick memorization.",
+                "A sandstorm approaches, obscuring your vision. You must rely on memory alone to match patterns as they briefly appear through the swirling sands.",
+                "Desert nights bring a chill and clarity to the air. Stars form constellations above, while nocturnal creatures emerge below, creating dual matching challenges.",
+                "A mirage leads you to the ruins of a desert kingdom. Match the royal symbols to unlock the history of this once-great civilization.",
+                "Underground caverns provide escape from the heat. In this labyrinth of cool passages, cave drawings and crystals form new memory patterns.",
+                "You encounter a desert caravan led by nomadic traders. Their exotic goods and traditional symbols test your growing memory skills.",
+                "A hidden temple emerges from the dunes, revealed only once every century. Ancient priests left memory tests to guard their sacred knowledge.",
+                "At the heart of the desert stands a mystical pyramid. Complete the final desert challenge to harness the power of this mysterious structure."
+            ],
+            // World 4: Mountain
+            [
+                "Crisp mountain air greets you as you begin your ascent. Alpine flowers and creatures create simple patterns against the rocky terrain.",
+                "The path steepens as you climb higher. Mountain goats watch from precarious perches as you navigate increasingly complex memory challenges.",
+                "A mountain meadow offers a moment of respite. Butterflies and wildflowers create ephemeral patterns that quickly change in the breeze.",
+                "Mist envelops the mountainside, obscuring your vision. Shapes emerge and disappear, testing your ability to remember through the fog.",
+                "You reach a glacial field where ice formations create reflective puzzles. Light and shadow play tricks as you attempt to find matching pairs.",
+                "Mountain caves reveal ancient cave paintings. Match these primitive symbols to understand the history of those who came before.",
+                "As you near the summit, the air thins. Oxygen deprivation challenges your memory as you match increasingly intricate mountain patterns.",
+                "Aurora lights dance across the night sky. Their shifting colors create a natural memory game of spectacular beauty and difficulty.",
+                "The mountain peak is within sight. Eagle guardians circle above, presenting their most challenging memory test before you reach the top.",
+                "Standing atop the highest summit, the mountain spirit presents one final challenge. Complete it to master the realm of peaks and valleys."
+            ],
+            // World 5: Crystal Cave
+            [
+                "Glittering crystal formations welcome you to this underground wonder. Light refracts through transparent surfaces, creating dazzling memory challenges.",
+                "Deeper chambers reveal crystals of every color. Their chromatic patterns shift as you move through the cavern, testing your adaptive memory.",
+                "You discover a chamber of singing crystals. Their melodic tones accompany visual patterns in a multi-sensory memory challenge.",
+                "Ancient crystal-crafters left geometric puzzles throughout this area. Their precise patterns require mathematical memory to solve.",
+                "Crystal pools reflect and multiply the patterns around you. Distinguish original from reflection to succeed in this mind-bending challenge.",
+                "A geode chamber surrounds you with inward-facing crystal points. Their 360-degree patterns create the most immersive memory test yet.",
+                "Time-shifting crystals show patterns from past and future simultaneously. Your memory must bridge temporal gaps to find matching pairs.",
+                "You reach the crystal heart of the cave system. Pulsing energy creates living patterns that change with each heartbeat.",
+                "Crystal guardians awaken from ancient sleep. Their faceted forms create complex, shifting patterns designed to confuse intruders.",
+                "The Crystal Monarch awaits in the final chamber. Complete their sovereign challenge to master the realm of light and reflection."
+            ],
+            // World 6: Volcanic
+            [
+                "Heat shimmers around you as you enter the volcanic realm. Lava bubbles create ever-changing patterns that test your quick-response memory.",
+                "Sulfurous geysers erupt at random intervals. Between steam clouds, fleeting symbols appear that must be quickly memorized and matched.",
+                "You cross a cooled lava field where obsidian mirrors create reflecting puzzles. Your perception must separate real from reflection.",
+                "The volcanic forge reveals ancient rune-smiths at work. Their molten creations form patterns of power that challenge your memory.",
+                "Fire salamanders dart between heated rocks. Their movements create living patterns that shift and change with the flowing lava.",
+                "You discover a chamber of volcanic glass. Fractured reflections multiply each symbol, creating a kaleidoscopic memory challenge.",
+                "Near the volcano's core, heat-resistant plants thrive in extreme conditions. Their unique adaptations create biological patterns unlike any seen before.",
+                "Time passes differently in the volcano's heart. Memory patterns from past eruptions appear and disappear, requiring temporal awareness to match.",
+                "Volcanic guardians formed of living magma test your mastery of heat and memory. Their molten forms shift constantly, creating the ultimate matching challenge.",
+                "The Volcano God awaits at the fiery summit. Complete their blazing challenge to master the realm of fire and become a legend of Memory Quest."
+            ]
+        ];
+        
+        const unlockedFeatures = [
+            // User level
+            {
+                level: 2,
+                feature: "Hint ability unlocked!",
+                effect: function() {
+                    gameState.abilities.hint.unlocked = true;
+                    document.getElementById("hintAbility").disabled = false;
+                }
+            },
+            {
+                level: 4,
+                feature: "Peek ability unlocked!",
+                effect: function() {
+                    gameState.abilities.peek.unlocked = true;
+                    document.getElementById("peekAbility").disabled = false;
+                }
+            },
+            {
+                level: 6,
+                feature: "Time extension ability unlocked!",
+                effect: function() {
+                    gameState.abilities.time.unlocked = true;
+                    document.getElementById("timeAbility").disabled = false;
+                }
+            },
+            {
+                level: 8,
+                feature: "Shuffle ability unlocked!",
+                effect: function() {
+                    gameState.abilities.shuffle.unlocked = true;
+                    document.getElementById("shuffleAbility").disabled = false;
+                }
+            },
+            {
+                level: 10,
+                feature: "New world unlocked!",
+                effect: function() {
+                    // This will be handled by the world completion logic
+                }
+            }
+        ];
+        
+        // DOM elements
+        const boardElement = document.getElementById("board");
+        const worldElement = document.getElementById("world");
+        const levelElement = document.getElementById("level");
+        const scoreElement = document.getElementById("score");
+        const coinsElement = document.getElementById("coins");
+        const movesElement = document.getElementById("moves");
+        const timerElement = document.getElementById("timer");
+        const progressElement = document.getElementById("levelProgress");
+        const storyElement = document.getElementById("storyContent");
+        const levelSelectorElement = document.getElementById("levelSelector");
+        
+        // Initialize level selector
+        function initializeLevelSelector() {
+            levelSelectorElement.innerHTML = "";
+            const maxLevel = gameState.maxLevelUnlocked;
+            
+            for (let i = 1; i <= maxLevel; i++) {
+                const option = document.createElement("option");
+                option.value = i;
+                option.textContent = `Level ${i}`;
+                levelSelectorElement.appendChild(option);
+            }
+            
+            levelSelectorElement.value = gameState.level;
+            
+            levelSelectorElement.addEventListener("change", function() {
+                gameState.level = parseInt(this.value);
+                initializeGame();
+            });
+        }
+        
+        // Initialize the game
+        function initializeGame() {
+            // Reset game state values
+            gameState.score = 0;
+            gameState.moves = 0;
+            gameState.firstCard = null;
+            gameState.secondCard = null;
+            gameState.locked = false;
+            gameState.cardsInPlay = 0;
+            gameState.cardsPaired = 0;
+            
+            // Update display elements
+            worldElement.textContent = gameState.world;
+            levelElement.textContent = gameState.level;
+            scoreElement.textContent = gameState.score;
+            coinsElement.textContent = gameState.coins;
+            movesElement.textContent = gameState.moves;
+            
+            // Update background color based on current world
+            document.body.style.backgroundColor = gameWorlds[gameState.world - 1].color + "33"; // Add transparency
+            
+            // Add world badge
+            updateWorldBadge();
+            
+            // Set up the board
+            setupBoard();
+            
+            // Update story text
+            storyElement.textContent = levelStories[gameState.world - 1][gameState.level - 1];
+            
+            // Reset progress bar
+            progressElement.style.width = "0%";
+            
+            // Initialize timer if the level has a time limit
+            const levelConfig = levelConfigs[gameState.world - 1][gameState.level - 1];
+            if (levelConfig.time) {
+                gameState.timeRemaining = levelConfig.time;
+                updateTimerDisplay();
+                
+                // Clear any existing timer
+                if (gameState.timer) {
+                    clearInterval(gameState.timer);
+                }
+                
+                // Start the timer
+                gameState.timer = setInterval(function() {
+                    gameState.timeRemaining--;
+                    updateTimerDisplay();
+                    
+                    if (gameState.timeRemaining <= 0) {
+                        clearInterval(gameState.timer);
+                        gameOver();
+                    }
+                }, 1000);
+            }
+            
+            // Update ability buttons
+            updateAbilityButtons();
+        }
+        
+        // Setup the game board
+        function setupBoard() {
+            // Clear the board
+            boardElement.innerHTML = "";
+            
+            // Get level configuration
+            const levelConfig = levelConfigs[gameState.world - 1][gameState.level - 1];
+            const { rows, cols, cardsToUse } = levelConfig;
+            
+            // Set up grid layout
+            boardElement.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            
+            // Get symbols for this level
+            let symbols = symbolSets[gameState.world - 1][gameState.level - 1].slice(0, cardsToUse);
+            
+            // Create pairs
+            let cardSymbols = [...symbols, ...symbols];
+            
+            // Shuffle the cards
+            cardSymbols = shuffleArray(cardSymbols);
+            
+            // Create cards and add them to the board
+            gameState.cardsInPlay = cardSymbols.length;
+            cardSymbols.forEach((symbol, index) => {
+                const card = document.createElement("div");
+                card.className = "card";
+                card.dataset.cardIndex = index;
+                card.dataset.symbol = symbol;
+                
+                const cardFront = document.createElement("div");
+                cardFront.className = "card-face card-front";
+                cardFront.textContent = symbol;
+                
+                const cardBack = document.createElement("div");
+                cardBack.className = "card-face card-back";
+                
+                card.appendChild(cardFront);
+                card.appendChild(cardBack);
+                
+                card.addEventListener("click", () => flipCard(card));
+                
+                boardElement.appendChild(card);
+            });
+        }
+        
+        // Update the world badge
+        function updateWorldBadge() {
+            // Remove existing badge if any
+            const existingBadge = document.querySelector(".world-badge");
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Create new badge
+            const badge = document.createElement("div");
+            badge.className = "world-badge";
+            badge.textContent = gameWorlds[gameState.world - 1].name + " World";
+            badge.style.backgroundColor = gameWorlds[gameState.world - 1].color;
+            
+            document.body.appendChild(badge);
+        }
+        
+        // Update timer display
+        function updateTimerDisplay() {
+            const minutes = Math.floor(gameState.timeRemaining / 60);
+            const seconds = gameState.timeRemaining % 60;
+            timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Update ability buttons
+        function updateAbilityButtons() {
+            // Hint ability
+            const hintButton = document.getElementById("hintAbility");
+            hintButton.disabled = !gameState.abilities.hint.unlocked || gameState.coins < gameState.abilities.hint.cost;
+            
+            // Add event listeners for ability buttons
+document.getElementById("hintAbility").addEventListener("click", useHint);
+document.getElementById("peekAbility").addEventListener("click", usePeek);
+document.getElementById("timeAbility").addEventListener("click", useTime);
+document.getElementById("shuffleAbility").addEventListener("click", useShuffle);
+
+// Hint ability: Reveals a pair of matching cards for 2 seconds
+function useHint() {
+    if (gameState.coins < gameState.abilities.hint.cost) {
+        alert("Not enough coins!");
+        return;
+    }
+
+    // Deduct coins
+    gameState.coins -= gameState.abilities.hint.cost;
+    coinsElement.textContent = gameState.coins;
+
+    // Find all unflipped cards
+    const unflippedCards = Array.from(document.querySelectorAll(".card:not(.flipped):not(.matched)"));
+
+    // Find a matching pair
+    let matchFound = false;
+    let firstCard, secondCard;
+
+    for (let i = 0; i < unflippedCards.length; i++) {
+        for (let j = i + 1; j < unflippedCards.length; j++) {
+            if (unflippedCards[i].dataset.symbol === unflippedCards[j].dataset.symbol) {
+                firstCard = unflippedCards[i];
+                secondCard = unflippedCards[j];
+                matchFound = true;
+                break;
+            }
+        }
+        if (matchFound) break;
+    }
+
+    if (matchFound) {
+        // Temporarily show the matching cards
+        firstCard.classList.add("flipped", "hint");
+        secondCard.classList.add("flipped", "hint");
+
+        // Hide the cards after 2 seconds
+        setTimeout(() => {
+            firstCard.classList.remove("flipped", "hint");
+            secondCard.classList.remove("flipped", "hint");
+        }, 2000);
+    } else {
+        alert("No matches found!");
+    }
+}
+
+// Peek ability: Reveals all cards for 3 seconds
+function usePeek() {
+    if (gameState.coins < gameState.abilities.peek.cost) {
+        alert("Not enough coins!");
+        return;
+    }
+
+    // Deduct coins
+    gameState.coins -= gameState.abilities.peek.cost;
+    coinsElement.textContent = gameState.coins;
+
+    // Flip all cards
+    const allCards = Array.from(document.querySelectorAll(".card:not(.flipped):not(.matched)"));
+    allCards.forEach(card => card.classList.add("flipped", "peek"));
+
+    // Hide the cards after 3 seconds
+    setTimeout(() => {
+        allCards.forEach(card => card.classList.remove("flipped", "peek"));
+    }, 3000);
+}
+
+// +30s Time ability: Adds 30 seconds to the timer
+function useTime() {
+    if (gameState.coins < gameState.abilities.time.cost) {
+        alert("Not enough coins!");
+        return;
+    }
+
+    // Deduct coins
+    gameState.coins -= gameState.abilities.time.cost;
+    coinsElement.textContent = gameState.coins;
+
+    // Add 30 seconds to the timer
+    gameState.timeRemaining += 30;
+    updateTimerDisplay();
+}
+
+// Shuffle ability: Shuffles the positions of all unflipped cards
+function useShuffle() {
+    if (gameState.coins < gameState.abilities.shuffle.cost) {
+        alert("Not enough coins!");
+        return;
+    }
+
+    // Deduct coins
+    gameState.coins -= gameState.abilities.shuffle.cost;
+    coinsElement.textContent = gameState.coins;
+
+    // Get all unflipped and unmatched cards
+    const unflippedCards = Array.from(document.querySelectorAll(".card:not(.flipped):not(.matched)"));
+
+    // Extract their symbols
+    const symbols = unflippedCards.map(card => card.dataset.symbol);
+
+    // Shuffle the symbols
+    const shuffledSymbols = shuffleArray(symbols);
+
+    // Update the cards with the shuffled symbols
+    unflippedCards.forEach((card, index) => {
+        card.dataset.symbol = shuffledSymbols[index];
+        card.querySelector(".card-front").textContent = shuffledSymbols[index];
+    });
+}
+        }
+
+        // Flip a card
+        function flipCard(card) {
+            if (gameState.locked || card.classList.contains("flipped") || card.classList.contains("matched")) {
+                return;
+            }
+
+            card.classList.add("flipped");
+
+            if (!gameState.firstCard) {
+                gameState.firstCard = card;
+            } else {
+                gameState.secondCard = card;
+                checkForMatch();
+            }
+        }
+
+        // Check if the two flipped cards match
+        function checkForMatch() {
+            gameState.locked = true;
+            gameState.moves++;
+            movesElement.textContent = gameState.moves;
+
+            if (gameState.firstCard.dataset.symbol === gameState.secondCard.dataset.symbol) {
+                handleMatch();
+            } else {
+                handleMismatch();
+            }
+        }
+
+        // Handle a match
+        function handleMatch() {
+            gameState.firstCard.classList.add("matched");
+            gameState.secondCard.classList.add("matched");
+
+            gameState.cardsPaired += 2;
+            updateScore();
+
+            if (gameState.cardsPaired === gameState.cardsInPlay) {
+                levelComplete();
+            } else {
+                resetTurn();
+            }
+        }
+
+        // Handle a mismatch
+        function handleMismatch() {
+            setTimeout(() => {
+                gameState.firstCard.classList.remove("flipped");
+                gameState.secondCard.classList.remove("flipped");
+                resetTurn();
+            }, 1000);
+        }
+
+        // Reset the turn
+        function resetTurn() {
+            gameState.firstCard = null;
+            gameState.secondCard = null;
+            gameState.locked = false;
+        }
+
+        // Update the score
+        function updateScore() {
+            const levelConfig = levelConfigs[gameState.world - 1][gameState.level - 1];
+            const baseScore = 10;
+            const multiplier = levelConfig.scoreMultiplier;
+            const matchBonus = gameState.matchBonus ? 2 : 1;
+
+            const scoreEarned = Math.floor(baseScore * multiplier * matchBonus);
+            gameState.score += scoreEarned;
+            scoreElement.textContent = gameState.score;
+
+            if (gameState.matchBonus) {
+                gameState.matchBonus--;
+                if (gameState.matchBonus === 0) {
+                    alert("Match bonus expired!");
+                }
+            }
+
+            // Update XP
+            updateXP(scoreEarned);
+        }
+
+        // Update XP and check for level up
+        function updateXP(scoreEarned) {
+            const xpGained = Math.floor(scoreEarned / 2);
+            gameState.currentXP += xpGained;
+
+            if (gameState.currentXP >= gameState.xpToNextLevel) {
+                levelUp();
+            }
+
+            // Update progress bar
+            const progressPercent = (gameState.currentXP / gameState.xpToNextLevel) * 100;
+            progressElement.style.width = `${progressPercent}%`;
+        }
+
+        // Handle level up
+        function levelUp() {
+            gameState.currentXP = 0;
+            gameState.xpToNextLevel = Math.floor(gameState.xpToNextLevel * 1.5);
+
+            const modal = document.getElementById("levelUpModal");
+            const earnedCoins = Math.floor(Math.random() * 20) + 10;
+            gameState.coins += earnedCoins;
+            coinsElement.textContent = gameState.coins;
+
+            document.getElementById("earnedCoins").textContent = earnedCoins;
+            document.getElementById("newLevel").textContent = gameState.level;
+
+            // Check for unlocked features
+            const unlockedFeature = unlockedFeatures.find(feature => feature.level === gameState.level);
+            if (unlockedFeature) {
+                document.getElementById("unlockedItem").textContent = unlockedFeature.feature;
+                unlockedFeature.effect();
+            }
+
+            modal.style.display = "flex";
+        }
+
+        // Handle level completion
+        function levelComplete() {
+            clearInterval(gameState.timer);
+
+            const modal = document.getElementById("victoryModal");
+            const coinsEarned = Math.floor(gameState.score / 10);
+            gameState.coins += coinsEarned;
+            coinsElement.textContent = gameState.coins;
+
+            document.getElementById("finalScore").textContent = gameState.score;
+            document.getElementById("levelCoins").textContent = coinsEarned;
+
+            modal.style.display = "flex";
+
+            // Check if world is complete
+            if (gameState.level === 10) {
+                worldComplete();
+            }
+        }
+
+        // Handle world completion
+        function worldComplete() {
+            const modal = document.getElementById("worldCompleteModal");
+            const bonusCoins = 100;
+            gameState.coins += bonusCoins;
+            coinsElement.textContent = gameState.coins;
+
+            document.getElementById("completedWorld").textContent = gameWorlds[gameState.world - 1].name;
+            document.getElementById("worldBonus").textContent = bonusCoins;
+
+            if (gameState.world < gameWorlds.length) {
+                document.getElementById("worldUnlock").textContent = `You've unlocked the ${gameWorlds[gameState.world].name} world!`;
+            } else {
+                document.getElementById("worldUnlock").textContent = "You've completed all worlds!";
+            }
+
+            modal.style.display = "flex";
+        }
+
+        // Handle game over
+        function gameOver() {
+            const modal = document.getElementById("gameOverModal");
+            document.getElementById("gameOverScore").textContent = gameState.score;
+            modal.style.display = "flex";
+        }
+
+        // Shuffle array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Event listeners for modal buttons
+        document.getElementById("nextLevelBtn").addEventListener("click", () => {
+            document.getElementById("victoryModal").style.display = "none";
+            gameState.level++;
+            initializeGame();
+        });
+
+        document.getElementById("nextWorldBtn").addEventListener("click", () => {
+            document.getElementById("worldCompleteModal").style.display = "none";
+            gameState.world++;
+            gameState.level = 1;
+            initializeGame();
+        });
+
+        document.getElementById("continueBtn").addEventListener("click", () => {
+            document.getElementById("levelUpModal").style.display = "none";
+        });
+
+        document.getElementById("gameOverRestartBtn").addEventListener("click", () => {
+            document.getElementById("gameOverModal").style.display = "none";
+            initializeGame();
+        });
+
+        document.getElementById("restartBtn").addEventListener("click", () => {
+            initializeGame();
+        });
+
+        document.getElementById("shopBtn").addEventListener("click", () => {
+            document.getElementById("shopModal").style.display = "flex";
+            document.getElementById("shopCoins").textContent = gameState.coins;
+        });
+
+        document.getElementById("closeShopBtn").addEventListener("click", () => {
+            document.getElementById("shopModal").style.display = "none";
+        });
+
+        // Buy shop item
+        function buyItem(item) {
+            const shopItem = shopItems[item];
+            if (gameState.coins >= shopItem.cost) {
+                gameState.coins -= shopItem.cost;
+                coinsElement.textContent = gameState.coins;
+                shopItem.effect();
+                document.getElementById("shopCoins").textContent = gameState.coins;
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+
+        // Initialize the game on page load
+        initializeLevelSelector();
+        initializeGame();
+    </script>
+</body>
+</html>
